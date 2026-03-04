@@ -1051,7 +1051,7 @@ CUDA_HOST_DEVICE ValueAndPushforward<T, dT> cbrt_pushforward(T x, dT d_x) {
 #if __cplusplus >= 201703L
 template <typename T, typename dT>
 CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expint_pushforward(T x, dT d_x) {
-  auto expintx = ::std::expint(x); // auto prevents strict type-promotion mismatch
+  auto expintx = ::std::expint(x); 
   return {static_cast<T>(expintx), static_cast<dT>(d_x * (::std::exp(x) / x))};
 }
 
