@@ -557,6 +557,42 @@ CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expm1l_pushforward(T x, dT d_x) {
   return expm1_pushforward(x, d_x);
 }
 
+// 2.4 expint, expintf, expintl
+#if __cplusplus >= 201703L
+template <typename T, typename dT>
+CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expint_pushforward(T x, dT d_x) {
+  auto expintx = ::std::expint(x);
+  return {static_cast<T>(expintx), static_cast<dT>(d_x * (::std::exp(x) / x))};
+}
+
+// pushforward for expintf, expintl
+template <typename T, typename dT>
+CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expintf_pushforward(T x, dT d_x) {
+  return expint_pushforward(x, d_x);
+}
+
+template <typename T, typename dT>
+CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expintl_pushforward(T x, dT d_x) {
+  return expint_pushforward(x, d_x);
+}
+
+template <typename T, typename U>
+CUDA_HOST_DEVICE void expint_pullback(T x, U d_res, T* d_x) {
+  *d_x += d_res * static_cast<T>(::std::exp(x) / x);
+}
+
+// pullback for expintf, expintl
+template <typename T, typename U>
+CUDA_HOST_DEVICE void expintf_pullback(T x, U d_res, T* d_x) {
+  expint_pullback(x, d_res, d_x);
+}
+
+template <typename T, typename U>
+CUDA_HOST_DEVICE void expintl_pullback(T x, U d_res, T* d_x) {
+  expint_pullback(x, d_res, d_x);
+}
+#endif
+
 // 3. Logarithmic Functions
 
 // 3.1 log, logf, logl
@@ -1048,26 +1084,6 @@ CUDA_HOST_DEVICE ValueAndPushforward<T, dT> cbrt_pushforward(T x, dT d_x) {
   return {cbrtx, d_x / (3 * cbrtx * cbrtx)};
 }
 
-#if __cplusplus >= 201703L
-template <typename T, typename dT>
-CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expint_pushforward(T x, dT d_x) {
-  auto expintx = ::std::expint(x); 
-  return {static_cast<T>(expintx), static_cast<dT>(d_x * (::std::exp(x) / x))};
-}
-
-inline CUDA_HOST_DEVICE ValueAndPushforward<float, float>
-expintf_pushforward(float x, float d_x) noexcept {
-  auto expintx = ::std::expint(x);
-  return {static_cast<float>(expintx), static_cast<float>(d_x * (::std::exp(x) / x))};
-}
-
-inline CUDA_HOST_DEVICE ValueAndPushforward<long double, long double>
-expintl_pushforward(long double x, long double d_x) noexcept {
-  auto expintx = ::std::expint(x);
-  return {static_cast<long double>(expintx), static_cast<long double>(d_x * (::std::exp(x) / x))};
-}
-#endif 
-
 template <typename T, typename dT>
 CUDA_HOST_DEVICE ValueAndPushforward<T, dT> hypot_pushforward(T x, T y, dT d_x,
                                                               dT d_y) {
@@ -1267,6 +1283,12 @@ using std::expm1f_pushforward;
 using std::expm1l_pushforward;
 #if __cplusplus >= 201703L
 using std::expint_pushforward;
+using std::expintf_pushforward;
+using std::expintl_pushforward;
+
+using std::expint_pullback;
+using std::expintf_pullback;
+using std::expintl_pullback;
 #endif
 
 // 3. Logarithmic Functions
