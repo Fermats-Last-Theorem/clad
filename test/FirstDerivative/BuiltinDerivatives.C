@@ -442,6 +442,10 @@ double f_expm1l(double x) { return std::expm1l(x); }
 // CHECK-NEXT:     return _t0.pushforward;
 // CHECK-NEXT: }
 
+double f_expint(double x) { return std::expint(x); }
+// CHECK: double f_expint_darg0(double x) {
+// CHECK-NEXT:      {{.*}}ValueAndPushforward<double, double> _t0 = {{.*}}expint_pushforward(x, _d_x);
+
 double f_log1pl(double x) { return std::log1pl(x); }
 // CHECK: double f_log1pl_darg0(double x) {
 // CHECK-NEXT:     double _d_x = 1;
@@ -664,6 +668,9 @@ int main () { //expected-no-diagnostics
 
   auto d_expm1l = clad::differentiate(f_expm1l, 0);
   printf("Result is = %.6f\n", d_expm1l.execute(0.5)); // CHECK-EXEC: Result is = 1.648721
+
+  auto d_expint = clad::differentiate(f_expint, 0);
+  printf("Result is = %.6f\n", d_expint.execute(2.0)); // CHECK-EXEC: Result is = 3.694528
 
   auto d_log1pl = clad::differentiate(f_log1pl, 0);
   printf("Result is = %.6f\n", d_log1pl.execute(0.5)); // CHECK-EXEC: Result is = 0.666667

@@ -1048,6 +1048,42 @@ CUDA_HOST_DEVICE ValueAndPushforward<T, dT> cbrt_pushforward(T x, dT d_x) {
   return {cbrtx, d_x / (3 * cbrtx * cbrtx)};
 }
 
+#if __cplusplus >= 201703L
+// Pushforwards
+template <typename T, typename dT>
+CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expint_pushforward(T x, dT d_x) {
+  auto expintx = ::std::expint(x); // auto prevents strict type-promotion mismatch
+  return {static_cast<T>(expintx), static_cast<dT>(d_x * (::std::exp(x) / x))};
+}
+
+inline CUDA_HOST_DEVICE ValueAndPushforward<float, float>
+expintf_pushforward(float x, float d_x) noexcept {
+  auto expintx = ::std::expint(x);
+  return {static_cast<float>(expintx), static_cast<float>(d_x * (::std::exp(x) / x))};
+}
+
+inline CUDA_HOST_DEVICE ValueAndPushforward<long double, long double>
+expintl_pushforward(long double x, long double d_x) noexcept {
+  auto expintx = ::std::expint(x);
+  return {static_cast<long double>(expintx), static_cast<long double>(d_x * (::std::exp(x) / x))};
+}
+
+// Pullbacks
+template <typename T, typename dT>
+CUDA_HOST_DEVICE void expint_pullback(T x, dT* d_x, dT d_res) {
+  *d_x += d_res * static_cast<dT>(::std::exp(x) / x);
+}
+
+inline CUDA_HOST_DEVICE void expintf_pullback(float x, float* d_x, float d_res) noexcept {
+  *d_x += d_res * static_cast<float>(::std::exp(x) / x);
+}
+
+inline CUDA_HOST_DEVICE void expintl_pullback(long double x, long double* d_x, long double d_res) noexcept {
+  *d_x += d_res * static_cast<long double>(::std::exp(x) / x);
+}
+
+#endif // __cplusplus >= 201703L
+
 template <typename T, typename dT>
 CUDA_HOST_DEVICE ValueAndPushforward<T, dT> hypot_pushforward(T x, T y, dT d_x,
                                                               dT d_y) {
@@ -1245,6 +1281,8 @@ using std::expl_pushforward;
 using std::expm1_pushforward;
 using std::expm1f_pushforward;
 using std::expm1l_pushforward;
+using std::expint_pushforward;
+using std::expint_pullback;
 
 // 3. Logarithmic Functions
 using std::log10_pushforward;

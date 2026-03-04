@@ -254,6 +254,7 @@ long double f_fmal(long double x){ return fmal(x,2.0L, 1.0L); }
 DEFINE_FUNCTIONS(exp)   // x in (-inf,+inf)
 DEFINE_FUNCTIONS(exp2)  // x in (-inf,+inf)
 DEFINE_FUNCTIONS(expm1) // x in (-inf,+inf)
+DEFINE_FUNCTIONS(expint)// x in (-inf, 0) U (0, +inf)
 DEFINE_FUNCTIONS(log)   // x in (0,+inf)
 DEFINE_FUNCTIONS(log10) // x in (0,+inf)
 DEFINE_FUNCTIONS(log2)  // x in (0,+inf)
@@ -311,6 +312,7 @@ int main() {
   CHECK_ALL(exp);
   CHECK_ALL(exp2);
   CHECK_ALL(expm1);
+  CHECK_ALL_RANGE(expint, {-2.0, -1.0, -0.5, 0.5, 1.0, 2.0});
   CHECK_ALL(log);
   CHECK_ALL(log10);
   CHECK_ALL(log2);
