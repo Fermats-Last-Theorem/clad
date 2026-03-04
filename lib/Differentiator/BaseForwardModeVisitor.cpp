@@ -1017,6 +1017,8 @@ StmtDiff BaseForwardModeVisitor::VisitCallExpr(const CallExpr* CE) {
     return StmtDiff(Clone(CE));
   }
 
+  // llvm::errs() << "Visiting CallExpr: \n"; CE->dump();
+
   SourceLocation validLoc{CE->getBeginLoc()};
 
   // Calls to lambda functions are processed differently
@@ -1117,9 +1119,76 @@ StmtDiff BaseForwardModeVisitor::VisitCallExpr(const CallExpr* CE) {
     CallArgs.push_back(argDiff.getExpr());
     if (utils::IsDifferentiableType(arg->getType())) {
       Expr* dArg = argDiff.getExpr_dx();
+
+      if (!dArg && (arg->getType()->isPointerType() || arg->getType()->isArrayType())) {
+        const Expr* cleanArg = arg->IgnoreParenImpCasts();
+        if (const auto* DRE = dyn_cast<DeclRefExpr>(cleanArg)) {
+          if (const auto* VD = dyn_cast<VarDecl>(DRE->getDecl())) {
+            
+            std::size_t arrSize = 0;
+
+            /// try to get the size from the AST
+            if (const auto* CAT = m_Context.getAsConstantArrayType(VD->getType())) {
+              arrSize = CAT->getSize().getZExtValue();
+            } 
+            /// otherwise extract size from DiffRequest using TotalCapacity
+            else {
+              for (const auto& varInfo : m_DiffReq.DVI) {
+                if (varInfo.param == VD || varInfo.param->getName() == VD->getName()) {
+                  if (varInfo.TotalCapacity > 0) {
+                    arrSize = varInfo.TotalCapacity; 
+                  } else if (varInfo.paramIndexInterval.isValid()) {
+                    arrSize = varInfo.paramIndexInterval.Finish;
+                  }
+                  break;
+                }
+              }
+            }
+
+            /// If array size was found construct AST node for arg[k] for all k
+            if (arrSize > 0) {
+              QualType elemType = QualType(arg->getType()->getPointeeOrArrayElementType(), 0);
+              if (elemType.isNull()) elemType = m_Context.DoubleTy;
+
+              llvm::APInt sizeAPI(m_Context.getTypeSize(m_Context.getSizeType()), arrSize);
+              QualType arrType = m_Context.getConstantArrayType(
+                  elemType, sizeAPI, nullptr, ArraySizeModifier::Normal, 0);
+
+              llvm::SmallVector<Expr*, 4> initExprs;
+              for (std::size_t k = 0; k < arrSize; ++k) {
+                Expr* idxExpr = ConstantFolder::synthesizeLiteral(m_Context.IntTy, m_Context, k);
+                
+                Expr* subExpr = new (m_Context) ArraySubscriptExpr(
+                    const_cast<Expr*>(cleanArg), idxExpr, elemType, VK_LValue, OK_Ordinary, CE->getBeginLoc());
+
+                StmtDiff subDiff = Visit(subExpr);
+                Expr* subDx = subDiff.getExpr_dx();
+
+                if (!subDx || clad::utils::IsZeroOrNullValue(subDx)) {
+                  initExprs.push_back(ConstantFolder::synthesizeLiteral(elemType, m_Context, 0.0));
+                } else {
+                  initExprs.push_back(subDx);
+                }
+              }
+
+              InitListExpr* initList = new (m_Context) InitListExpr(
+                  m_Context, CE->getBeginLoc(), initExprs, CE->getEndLoc());
+              initList->setType(arrType);
+
+              TypeSourceInfo* tInfo = m_Context.getTrivialTypeSourceInfo(arrType);
+              CompoundLiteralExpr* CLE = new (m_Context) CompoundLiteralExpr(
+                  CE->getBeginLoc(), tInfo, arrType, VK_LValue, initList, false);
+
+              dArg = m_Sema.ImpCastExprToType(
+                  CLE, m_Context.getPointerType(elemType), CK_ArrayToPointerDecay).get();
+            }
+          }
+        }
+      }
       if (!dArg)
         dArg = getZeroInit(arg->getType());
-      // FIXME: What happens when dArg is nullptr?
+      // FIXME: What happens when dArg is nullptr? fixed
+      // pointer/array arguments are dynamically synthesized above
       diffArgs.push_back(dArg);
     }
   }
