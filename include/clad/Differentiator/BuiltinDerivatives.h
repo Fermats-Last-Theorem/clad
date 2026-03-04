@@ -1281,8 +1281,10 @@ using std::expl_pushforward;
 using std::expm1_pushforward;
 using std::expm1f_pushforward;
 using std::expm1l_pushforward;
+#if __cplusplus >= 201703L
 using std::expint_pushforward;
 using std::expint_pullback;
+#endif
 
 // 3. Logarithmic Functions
 using std::log10_pushforward;
