@@ -255,7 +255,10 @@ DEFINE_FUNCTIONS(exp)   // x in (-inf,+inf)
 DEFINE_FUNCTIONS(exp2)  // x in (-inf,+inf)
 DEFINE_FUNCTIONS(expm1) // x in (-inf,+inf)
 #if __cplusplus >= 201703L
-DEFINE_FUNCTIONS(expint)// x in (-inf, 0) U (0, +inf)
+template <typename T> 
+T f_expint(T x) { return std::expint(x); } // x in (-inf,0) U (0,+inf)
+inline float f_expintf(float x) { return std::expintf(x); }
+inline long double f_expintl(long double x) { return std::expintl(x); }
 #endif
 
 DEFINE_FUNCTIONS(log)   // x in (0,+inf)
@@ -316,7 +319,7 @@ int main() {
   CHECK_ALL(exp2);
   CHECK_ALL(expm1);
   #if __cplusplus >= 201703L
-  CHECK_ALL_RANGE(expint, {-2.0, -1.0, -0.5, 0.5, 1.0, 2.0});
+  CHECK_ALL_RANGE(expint, {-2.0, -1.0, -0.5, 0.5, 1.0, 2.0, 3.0});
   #endif
 
   CHECK_ALL(log);

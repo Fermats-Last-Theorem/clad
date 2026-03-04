@@ -561,8 +561,7 @@ CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expm1l_pushforward(T x, dT d_x) {
 #if __cplusplus >= 201703L
 template <typename T, typename dT>
 CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expint_pushforward(T x, dT d_x) {
-  auto expintx = ::std::expint(x);
-  return {static_cast<T>(expintx), static_cast<dT>(d_x * (::std::exp(x) / x))};
+  return {::std::expint(x), (::std::exp(x) / x) * d_x};
 }
 
 // pushforward for expintf, expintl
@@ -577,19 +576,19 @@ CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expintl_pushforward(T x, dT d_x) {
 }
 
 template <typename T, typename U>
-CUDA_HOST_DEVICE void expint_pullback(T x, U d_res, T* d_x) {
-  *d_x += d_res * static_cast<T>(::std::exp(x) / x);
+CUDA_HOST_DEVICE void expint_pullback(T x, U d_res) {
+  return d_res * static_cast<T>(::std::exp(x) / x);
 }
 
 // pullback for expintf, expintl
 template <typename T, typename U>
-CUDA_HOST_DEVICE void expintf_pullback(T x, U d_res, T* d_x) {
-  expint_pullback(x, d_res, d_x);
+CUDA_HOST_DEVICE void expintf_pullback(T x, U d_res) {
+  expint_pullback(x, d_res);
 }
 
 template <typename T, typename U>
-CUDA_HOST_DEVICE void expintl_pullback(T x, U d_res, T* d_x) {
-  expint_pullback(x, d_res, d_x);
+CUDA_HOST_DEVICE void expintl_pullback(T x, U d_res) {
+  expint_pullback(x, d_res);
 }
 #endif
 
