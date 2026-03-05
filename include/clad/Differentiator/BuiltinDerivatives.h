@@ -557,38 +557,48 @@ CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expm1l_pushforward(T x, dT d_x) {
   return expm1_pushforward(x, d_x);
 }
 
-// 2.4 expint, expintf, expintl
 #if __cplusplus >= 201703L
-template <typename T, typename dT>
-CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expint_pushforward(T x, dT d_x) {
-  return {::std::expint(x), (::std::exp(x) / x) * d_x};
+// 2.4 expint, expintf, expintl
+template <typename T> CUDA_HOST_DEVICE inline T clad_expint_primal(T x) {
+#if defined(__cpp_lib_math_special_funcs) || defined(__STDCPP_MATH_SPEC_FUNCS__)
+  return ::std ::expint(x);
+#else
+  return T(0);
+#endif
 }
 
-// pushforward for expintf, expintl
+template <typename T> CUDA_HOST_DEVICE inline T clad_expintf_primal(T x) {
+#if defined(__cpp_lib_math_special_funcs) || defined(__STDCPP_MATH_SPEC_FUNCS__)
+  return ::std ::expintf(x);
+#else
+  return T(0);
+#endif
+}
+
+template <typename T> CUDA_HOST_DEVICE inline T clad_expintl_primal(T x) {
+#if defined(__cpp_lib_math_special_funcs) || defined(__STDCPP_MATH_SPEC_FUNCS__)
+  return ::std ::expintl(x);
+#else
+  return T(0);
+#endif
+}
+
+template <typename T, typename dT>
+CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expint_pushforward(T x, dT d_x) {
+  return {static_cast<T>(clad_expint_primal(x)),
+          static_cast<dT>((::std ::exp(x) / x) * d_x)};
+}
+
 template <typename T, typename dT>
 CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expintf_pushforward(T x, dT d_x) {
-  return expint_pushforward(x, d_x);
+  return {static_cast<T>(clad_expintf_primal(x)),
+          static_cast<dT>((::std ::exp(x) / x) * d_x)};
 }
 
 template <typename T, typename dT>
 CUDA_HOST_DEVICE ValueAndPushforward<T, dT> expintl_pushforward(T x, dT d_x) {
-  return expint_pushforward(x, d_x);
-}
-
-template <typename T, typename U>
-CUDA_HOST_DEVICE void expint_pullback(T x, U d_res) {
-  return d_res * static_cast<T>(::std::exp(x) / x);
-}
-
-// pullback for expintf, expintl
-template <typename T, typename U>
-CUDA_HOST_DEVICE void expintf_pullback(T x, U d_res) {
-  expint_pullback(x, d_res);
-}
-
-template <typename T, typename U>
-CUDA_HOST_DEVICE void expintl_pullback(T x, U d_res) {
-  expint_pullback(x, d_res);
+  return {static_cast<T>(clad_expintl_primal(x)),
+          static_cast<dT>((::std ::exp(x) / x) * d_x)};
 }
 #endif
 
@@ -1390,10 +1400,6 @@ using std::expm1l_pushforward;
 using std::expint_pushforward;
 using std::expintf_pushforward;
 using std::expintl_pushforward;
-
-using std::expint_pullback;
-using std::expintf_pullback;
-using std::expintl_pullback;
 #endif
 
 // 3. Logarithmic Functions
@@ -1494,15 +1500,15 @@ void constructor_pullback(ValueAndPushforward<T, U> rhs,
 } // namespace custom_derivatives
 } // namespace clad
 
-  // FIXME: These math functions depend on promote_2 just like pow:
-  // atan2
-  // fmod
-  // copysign
-  // fdim
-  // fmax
-  // fmin
-  // hypot
-  // nextafter
-  // remainder
-  // remquo
-#endif //CLAD_BUILTIN_DERIVATIVES
+// FIXME: These math functions depend on promote_2 just like pow:
+// atan2
+// fmod
+// copysign
+// fdim
+// fmax
+// fmin
+// hypot
+// nextafter
+// remainder
+// remquo
+#endif // CLAD_BUILTIN_DERIVATIVES
