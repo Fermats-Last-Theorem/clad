@@ -112,7 +112,8 @@ namespace clad {
         : m_Builder(builder), m_Sema(builder.m_Sema),
           m_CladPlugin(builder.m_CladPlugin), m_Context(builder.m_Context),
           m_DerivativeFnScope(nullptr), m_DerivativeInFlight(false),
-          m_Derivative(nullptr), m_DiffReq(request) {}
+          m_Derivative(nullptr), m_DiffReq(request),
+          m_CurrentFunction(request.Function) {}
 
     using Stmts = llvm::SmallVector<clang::Stmt*, 16>;
 
@@ -128,6 +129,8 @@ namespace clad {
     clang::FunctionDecl* m_Derivative;
     /// The differentiation request that is being currently processed.
     const DiffRequest& m_DiffReq;
+    /// The function currently being differentiated
+    const clang::FunctionDecl* m_CurrentFunction = nullptr;
     /// Map used to keep track of variable declarations and match them
     /// with their derivatives.
     std::unordered_map<const clang::ValueDecl*, clang::Expr*> m_Variables;
