@@ -67,6 +67,62 @@ double f2(double i, double j) {
 // CHECK-NEXT:     }
 // CHECK-NEXT: }
 
+double f3(double i, double j) {
+  double c = 3.0;
+  auto _f = [c] (double t) {
+    return t * t;
+  };
+  return i + _f(j);
+}
+
+// CHECK: void f3_grad(double i, double j, double *_d_i, double *_d_j) {
+// CHECK-NEXT:     double _d_c = 0.;
+// CHECK-NEXT:     double c = 3.;
+// CHECK-NEXT:     auto _f0 = [c](double t) {
+// CHECK-NEXT:         return t * t;
+// CHECK-NEXT:     };
+// CHECK-NEXT:     auto _d__f = [](double t, double _d_y, double *_d_t) {
+// CHECK-NEXT:         {
+// CHECK-NEXT:             *_d_t += _d_y * t;
+// CHECK-NEXT:             *_d_t += t * _d_y;
+// CHECK-NEXT:         }
+// CHECK-NEXT:     };
+// CHECK-NEXT:     {
+// CHECK-NEXT:         *_d_i += 1;
+// CHECK-NEXT:         double _r0 = 0.;
+// CHECK-NEXT:         _d__f(j, 1, &_r0);
+// CHECK-NEXT:         *_d_j += _r0;
+// CHECK-NEXT:     }
+// CHECK-NEXT: }
+
+double f4(double i, double j) {
+  double c = 3.0;
+  double d = 4.0;
+  auto _f = [c, &d] (double t) {
+    return t * 2.0;
+  };
+  return i + _f(j);
+}
+
+// CHECK: void f4_grad(double i, double j, double *_d_i, double *_d_j) {
+// CHECK-NEXT:     double _d_c = 0.;
+// CHECK-NEXT:     double c = 3.;
+// CHECK-NEXT:     double _d_d = 0.;
+// CHECK-NEXT:     double d = 4.;
+// CHECK-NEXT:     auto _f0 = [c, &d](double t) {
+// CHECK-NEXT:         return t * 2.;
+// CHECK-NEXT:     };
+// CHECK-NEXT:     auto _d__f = [](double t, double _d_y, double *_d_t) {
+// CHECK-NEXT:         *_d_t += _d_y * 2.;
+// CHECK-NEXT:     };
+// CHECK-NEXT:     {
+// CHECK-NEXT:         *_d_i += 1;
+// CHECK-NEXT:         double _r0 = 0.;
+// CHECK-NEXT:         _d__f(j, 1, &_r0);
+// CHECK-NEXT:         *_d_j += _r0;
+// CHECK-NEXT:     }
+// CHECK-NEXT: }
+
 
 int main() {
   auto df1 = clad::gradient(f1);
@@ -78,4 +134,14 @@ int main() {
   di = 0, dj = 0;
   df2.execute(1, 1, &di, &dj);
   printf("%.2f %.2f\n", di, dj);              // CHECK-EXEC: 3.00 1.00
+
+  auto df3 = clad::gradient(f3);
+  di = 0, dj = 0;
+  df3.execute(1, 2, &di, &dj);
+  printf("%.2f %.2f\n", di, dj);              // CHECK-EXEC: 1.00 4.00
+
+  auto df4 = clad::gradient(f4);
+  di = 0, dj = 0;
+  df4.execute(1, 1, &di, &dj);
+  printf("%.2f %.2f\n", di, dj);              // CHECK-EXEC: 1.00 2.00
 }

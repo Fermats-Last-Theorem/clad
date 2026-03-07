@@ -130,7 +130,7 @@ namespace clad {
     /// The differentiation request that is being currently processed.
     const DiffRequest& m_DiffReq;
     /// The function currently being differentiated
-    const clang::FunctionDecl* m_CurrentFunction = nullptr;
+    const clang::FunctionDecl* m_CurrentFunction = nullptr; // NOLINT
     /// Map used to keep track of variable declarations and match them
     /// with their derivatives.
     std::unordered_map<const clang::ValueDecl*, clang::Expr*> m_Variables;

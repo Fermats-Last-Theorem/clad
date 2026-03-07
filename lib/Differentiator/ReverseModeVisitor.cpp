@@ -641,8 +641,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
 
     // First add the function itself as a parameter/argument
     // FIXME: We should not use const_cast to get the decl context here.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-    enzymeArgs.push_back(
+    enzymeArgs.push_back( // NOLINT(cppcoreguidelines-pro-type-const-cast)
         BuildDeclRef(const_cast<FunctionDecl*>(m_CurrentFunction)));
     // FIXME: We should not use const_cast to get the decl context here.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
@@ -1882,7 +1881,6 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
     Expr* lambdaE = buildDerivedLambda(LE);
     if (!m_Pullback.empty())
       m_Pullback.pop_back();
-    // FIXME: Clone lambda properly.
     return {cast<Expr>(Clone(LE)), lambdaE};
   }
 #endif // CLANG_VERSION_MAJOR
