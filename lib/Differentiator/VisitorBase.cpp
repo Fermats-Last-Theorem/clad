@@ -165,7 +165,7 @@ namespace clad {
   }
 
   void VisitorBase::updateReferencesOf(Stmt* InSubtree) {
-    utils::ReferencesUpdater up(m_Sema, getCurrentScope(), m_CurrentFunction,
+    utils::ReferencesUpdater up(m_Sema, getCurrentScope(), m_DiffReq.Function,
                                 m_DeclReplacements);
     up.TraverseStmt(InSubtree);
   }
@@ -411,7 +411,7 @@ namespace clad {
 
   QualType VisitorBase::CloneType(const QualType QT) {
     auto clonedType = m_Builder.m_NodeCloner->CloneType(QT);
-    utils::ReferencesUpdater up(m_Sema, getCurrentScope(), m_CurrentFunction,
+    utils::ReferencesUpdater up(m_Sema, getCurrentScope(), m_DiffReq.Function,
                                 m_DeclReplacements);
     up.updateType(clonedType);
     return clonedType;
@@ -852,8 +852,8 @@ namespace clad {
     std::size_t numOfDerivativeParams = m_DiffReq->getNumParams();
 
     // Account for the this pointer.
-    if (isa<CXXMethodDecl>(m_CurrentFunction) &&
-        !utils::IsStaticMethod(m_CurrentFunction) &&
+    if (isa<CXXMethodDecl>(m_DiffReq.Function) &&
+        !utils::IsStaticMethod(m_DiffReq.Function) &&
         (!m_DiffReq.Functor || m_DiffReq.Mode != DiffMode::jacobian))
       ++numOfDerivativeParams;
     // All output parameters will be of type `void*`. These
@@ -887,7 +887,7 @@ namespace clad {
     auto* DC = const_cast<DeclContext*>(m_DiffReq->getDeclContext());
     m_Sema.CurContext = DC;
     DeclWithContext diffOverloadFDWC =
-        m_Builder.cloneFunction(m_CurrentFunction, *this, DC, noLoc,
+        m_Builder.cloneFunction(m_DiffReq.Function, *this, DC, noLoc,
                                 diffNameInfo, diffFunctionOverloadType);
     FunctionDecl* diffOverloadFD = diffOverloadFDWC.first;
 
@@ -993,7 +993,7 @@ namespace clad {
     for (const DiffInputVarInfo& VarInfo : m_DiffReq.DVI)
       diffParams.push_back(VarInfo.param);
     return utils::GetDerivativeType(
-        m_Sema, m_CurrentFunction, m_DiffReq.Mode, diffParams,
+        m_Sema, m_DiffReq.Function, m_DiffReq.Mode, diffParams,
         /*forCustomDerv=*/false,
         /*shouldUseRestoreTracker=*/m_DiffReq.UseRestoreTracker,
         m_DiffReq.EnableErrorEstimation);

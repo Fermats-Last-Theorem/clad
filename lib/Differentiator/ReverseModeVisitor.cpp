@@ -265,7 +265,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
   }
 
   DerivativeAndOverload ReverseModeVisitor::Derive() {
-    assert(m_CurrentFunction && "Must not be null.");
+    assert(m_DiffReq.Function && "Must not be null.");
     PrettyStackTraceDerivative CrashInfo(m_DiffReq, m_Blocks, m_Sema,
                                          &m_CurVisitedStmt);
 
@@ -284,10 +284,10 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
                                                                m_Context,
                                                                /*val=*/1));
       else if (!returnTy->isVoidType()) {
-        diag(DiagnosticsEngine::Warning, m_CurrentFunction->getBeginLoc(),
+        diag(DiagnosticsEngine::Warning, m_DiffReq.Function->getBeginLoc(),
              "clad::gradient only supports differentiation functions of real "
              "return types. Return stmt ignored")
-            << m_CurrentFunction->getReturnTypeSourceRange();
+            << m_DiffReq.Function->getReturnTypeSourceRange();
         diag(DiagnosticsEngine::Note, m_DiffReq.CallContext->getBeginLoc(),
              "use clad::jacobian to compute derivatives of multiple real "
              "outputs w.r.t. multiple real inputs");
@@ -313,7 +313,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
     m_Sema.CurContext = DC;
     SourceLocation loc = m_DiffReq->getLocation();
     DeclarationNameInfo DNI = utils::BuildDeclarationNameInfo(m_Sema, name);
-    DeclWithContext result = m_Builder.cloneFunction(m_CurrentFunction, *this,
+    DeclWithContext result = m_Builder.cloneFunction(m_DiffReq.Function, *this,
                                                      DC, loc, DNI, dFnType);
     m_Derivative = result.first;
 
@@ -459,7 +459,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
     // If we the differentiated function is a constructor, generate `this`
     // object and differentiate its inits.
     Stmts initsDiff;
-    if (const auto* CD = dyn_cast<CXXConstructorDecl>(m_CurrentFunction)) {
+    if (const auto* CD = dyn_cast<CXXConstructorDecl>(m_DiffReq.Function)) {
       StmtDiff thisObj;
       // Constructors with only linear operations do not require
       // `_this` in the reverse sweep.
@@ -642,7 +642,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
     // First add the function itself as a parameter/argument
     // FIXME: We should not use const_cast to get the decl context here.
     enzymeArgs.push_back( // NOLINT(cppcoreguidelines-pro-type-const-cast)
-        BuildDeclRef(const_cast<FunctionDecl*>(m_CurrentFunction)));
+        BuildDeclRef(const_cast<FunctionDecl*>(m_DiffReq.Function)));
     // FIXME: We should not use const_cast to get the decl context here.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
     auto* fdDeclContext = const_cast<DeclContext*>(m_DiffReq->getDeclContext());
@@ -1375,7 +1375,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
     // _label0:  // the reverse sweep starts immediately
     // ```
     // Therefore, in this case, we can omit the goto.
-    const Stmt* lastFuncStmt = m_CurrentFunction->getBody();
+    const Stmt* lastFuncStmt = m_DiffReq.Function->getBody();
     if (const auto* CS = dyn_cast<CompoundStmt>(lastFuncStmt))
       lastFuncStmt = *CS->body_rbegin();
     if (RS == lastFuncStmt)
@@ -1765,8 +1765,6 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
     llvm::SaveAndRestore<DeclContext*> SaveContext(m_Sema.CurContext);
     llvm::SaveAndRestore<FunctionDecl*> SaveDerivative(m_Derivative);
 
-    llvm::SaveAndRestore<const clang::FunctionDecl*> SaveCurrentFunc(
-        m_CurrentFunction, LE->getCallOperator());
     llvm::SaveAndRestore<Scope*> SaveFunctionScope(m_DerivativeFnScope);
     beginScope(Scope::LambdaScope | Scope::DeclScope |
                Scope::FunctionDeclarationScope | Scope::FunctionPrototypeScope);
@@ -1878,9 +1876,13 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
   }
 
   StmtDiff ReverseModeVisitor::VisitLambdaExpr(const LambdaExpr* LE) {
-    Expr* lambdaE = buildDerivedLambda(LE);
-    if (!m_Pullback.empty())
-      m_Pullback.pop_back();
+    DiffRequest LambdaReq = m_DiffReq;
+    LambdaReq.Function = LE->getCallOperator();
+    LambdaReq.Functor = LE->getLambdaClass();
+
+    ReverseModeVisitor NestedVisitor(m_Builder, LambdaReq);
+    Expr* lambdaE = NestedVisitor.buildDerivedLambda(LE);
+
     return {cast<Expr>(Clone(LE)), lambdaE};
   }
 #endif // CLANG_VERSION_MAJOR
@@ -4392,7 +4394,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
 
   StmtDiff ReverseModeVisitor::VisitCXXThisExpr(const CXXThisExpr* CTE) {
     Expr* clonedCTE = nullptr;
-    if (!isa<CXXConstructorDecl>(m_CurrentFunction)) {
+    if (!isa<CXXConstructorDecl>(m_DiffReq.Function)) {
       clonedCTE = Clone(CTE);
     } else {
       // In constructor pullbacks, `this` is not taken as a parameter
@@ -4703,7 +4705,7 @@ Expr* ReverseModeVisitor::getStdInitListSizeExpr(const Expr* E) {
   void
   ReverseModeVisitor::BuildParams(llvm::SmallVectorImpl<ParmVarDecl*>& params,
                                   const LambdaExpr* LE) {
-    const FunctionDecl* FD = m_CurrentFunction;
+    const FunctionDecl* FD = m_DiffReq.Function;
     if (LE)
       FD = LE->getCallOperator();
 
