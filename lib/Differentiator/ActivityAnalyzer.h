@@ -63,6 +63,7 @@ public:
   bool TraverseCallExpr(clang::CallExpr* CE);
   bool TraverseConditionalOperator(clang::ConditionalOperator* CO);
   bool TraverseDeclRefExpr(clang::DeclRefExpr* DRE);
+  bool TraverseLambdaExpr(clang::LambdaExpr* LE);
   bool TraverseDeclStmt(clang::DeclStmt* DS);
   bool TraverseUnaryOperator(clang::UnaryOperator* UnOp);
   bool TraverseCompoundAssignOperator(clang::CompoundAssignOperator* CAO);

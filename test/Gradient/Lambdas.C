@@ -1,6 +1,6 @@
 // RUN: %cladclang %s -I%S/../../include -oLambdas.out 2>&1 | %filecheck %s
 // RUN: ./Lambdas.out | %filecheck_exec %s
-// RUN: %cladclang -Xclang -plugin-arg-clad -Xclang -disable-tbr -Xclang -plugin-arg-clad -Xclang -disable-va %s -I%S/../../include -oLambdas.out
+// RUN: %cladclang -Xclang -plugin-arg-clad -Xclang -enable-va %s -I%S/../../include -oLambdas.out
 // RUN: ./Lambdas.out | %filecheck_exec %s
 // UNSUPPORTED: clang-11, clang-12, clang-13, clang-14, clang-15, clang-16
 

@@ -413,4 +413,28 @@ bool VariedAnalyzer::TraverseDeclRefExpr(DeclRefExpr* DRE) {
       m_Varied = true;
   return false;
 }
+
+bool VariedAnalyzer::TraverseLambdaExpr(clang::LambdaExpr* LE) {
+  for (clang::Expr* Init : LE->capture_inits()) {
+    TraverseStmt(Init);
+  }
+
+  clang::CXXMethodDecl* CallOp = LE->getCallOperator();
+  clang::CXXRecordDecl* LambdaClass = LE->getLambdaClass();
+
+  DiffRequest LambdaReq = m_DiffReq;
+  LambdaReq.Function = CallOp;
+  LambdaReq.Functor = LambdaClass;
+  for (clang::ParmVarDecl* PVD : CallOp->parameters()) {
+    LambdaReq.addVariedDecl(PVD);
+  }
+  clang::AnalysisDeclContext LambdaDC(/*Manager=*/nullptr, CallOp);
+  VariedAnalyzer NestedAnalyzer(&LambdaDC, LambdaReq, m_ResSet);
+  NestedAnalyzer.Analyze();
+
+  for (const auto* VD : LambdaReq.getVariedDecls()) {
+    m_DiffReq.addVariedDecl(VD);
+  }
+  return true;
+}
 } // namespace clad
